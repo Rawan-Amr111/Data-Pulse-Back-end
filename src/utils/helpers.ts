@@ -23,9 +23,10 @@ export const sendJSON = (
 ): void => {
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "OPTIONS, POST, GET",
+    "Access-Control-Allow-Origin": "http://localhost:5173",
+    "Access-Control-Allow-Methods": "OPTIONS, POST, GET, PUT, DELETE",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
   });
   res.end(JSON.stringify(data));
 };

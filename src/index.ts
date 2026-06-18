@@ -8,14 +8,21 @@ dotenv.config();
 const server = http.createServer(
   async (req: IncomingMessage, res: ServerResponse) => {
     const { method, url } = req;
+    res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "OPTIONS, POST, GET, PUT, DELETE",
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization",
+    );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     if (method === "OPTIONS") {
-      res.writeHead(204, {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "OPTIONS, POST, GET",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      });
+      res.writeHead(204);
       return res.end();
     }
+
     if (url?.startsWith("/api/auth")) {
       await handleAuthRoutes(req, res);
     } else {

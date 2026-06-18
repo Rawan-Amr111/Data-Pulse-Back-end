@@ -19,7 +19,7 @@ interface LoginRequestBody {
   password?: string;
 }
 
-// 📝 كونترولر الـ Signup
+// 1️⃣ دالة الساين أب (ممنوع تماماً يكون فيها سطر Set-Cookie للتوكن لأن مفيش توكن هنا!)
 export const signupController = async (
   req: IncomingMessage,
   res: ServerResponse,
@@ -52,12 +52,12 @@ export const signupController = async (
       user: newUser.rows[0],
     });
   } catch (error) {
-    console.error(error);
+    console.error("🚨 SIGNUP ERROR:", error); // هيطبع لك السبب بالملي في الـ terminal لو حصلت مشكلة داتابيز
     return sendJSON(res, 500, { message: "Server Error" });
   }
 };
 
-// 🔑 كونترولر الـ Login
+// 2️⃣ دالة اللوجين (هي الوحيدة اللي بتولد التوكن وتزرع الكوكي)
 export const loginController = async (
   req: IncomingMessage,
   res: ServerResponse,
@@ -85,14 +85,20 @@ export const loginController = async (
 
     const jwtSecret = process.env.JWT_SECRET || "fallback_secret";
     const token = jwt.sign({ id: user.id }, jwtSecret, { expiresIn: "1d" });
+    const maxAge = 24 * 60 * 60; // يوم واحد بالثواني
+
+    // إرسال الكوكي بأمان تام محلياً
+    res.setHeader(
+      "Set-Cookie",
+      `token=${token}; HttpOnly; SameSite=Lax; Max-Age=${maxAge}; Path=/`,
+    );
 
     return sendJSON(res, 200, {
       message: "Login successful",
-      token,
       user: { id: user.id, name: user.name, email: user.email } as UserPayload,
     });
   } catch (error) {
-    console.error(error);
+    console.error("🚨 LOGIN ERROR:", error);
     return sendJSON(res, 500, { message: "Server Error" });
   }
 };
