@@ -2,6 +2,7 @@ import http, { IncomingMessage, ServerResponse } from "http";
 import { handleAuthRoutes } from "./routes/authRoutes";
 import { sendJSON } from "./utils/helpers";
 import dotenv from "dotenv";
+import { getOrdersController } from "./controllers/getOrdersController";
 
 dotenv.config();
 
@@ -25,6 +26,11 @@ const server = http.createServer(
 
     if (url?.startsWith("/api/auth")) {
       await handleAuthRoutes(req, res);
+    } else if (url?.startsWith("/api/upload") && method === "POST") {
+      const { uploadController } = require("./controllers/uploadController");
+      await uploadController(req, res);
+    } else if (req.url === "/api/orders" && req.method === "GET") {
+      await getOrdersController(req, res);
     } else {
       sendJSON(res, 404, { message: "Global Route not found" });
     }
