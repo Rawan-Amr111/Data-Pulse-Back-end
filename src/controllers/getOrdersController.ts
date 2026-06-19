@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from "http";
-import { pool } from "../config/db";
+import { prisma } from "../config/prisma";
 import { sendJSON } from "../utils/helpers";
 
 export const getOrdersController = async (
@@ -7,10 +7,21 @@ export const getOrdersController = async (
   res: ServerResponse,
 ) => {
   try {
-    const result = await pool.query(
-      "SELECT id, transaction_number, transaction_date, item_name, quantity, price, total_price, status FROM orders ORDER BY transaction_date DESC, id DESC",
-    );
-    return sendJSON(res, 200, result.rows);
+    const orders = await prisma.order.findMany({
+      select: {
+        id: true,
+        transactionNumber: true,
+        transactionDate: true,
+        itemName: true,
+        quantity: true,
+        price: true,
+        totalPrice: true,
+        status: true,
+      },
+      orderBy: [{ transactionDate: "desc" }, { id: "desc" }],
+    });
+
+    return sendJSON(res, 200, orders);
   } catch (error) {
     console.error("🚨 Get Orders Controller Error:", error);
     return sendJSON(res, 500, {

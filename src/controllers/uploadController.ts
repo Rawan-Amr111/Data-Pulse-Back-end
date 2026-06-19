@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from "http";
-import { pool } from "../config/db";
+import { prisma } from "../config/prisma";
 import { sendJSON } from "../utils/helpers";
 import * as XLSX from "xlsx";
 
@@ -80,29 +80,20 @@ export const uploadController = async (
             status,
             transactionDate: formattedDate,
           };
+
           if (fileType === "inventory") {
-            await pool.query(
-              "INSERT INTO inventory (item_name, quantity, price, status) VALUES ($1, $2, $3, $4)",
-              [
-                cleanedOrder.itemName,
-                cleanedOrder.quantity,
-                cleanedOrder.price,
-                cleanedOrder.status,
-              ],
-            );
           } else {
-            await pool.query(
-              "INSERT INTO orders (transaction_number,transaction_date, item_name, quantity, price, total_price, status) VALUES ($1, $2, $3, $4, $5, $6)",
-              [
-                transactionNum,
-                cleanedOrder.transactionDate,
-                cleanedOrder.itemName,
-                cleanedOrder.quantity,
-                cleanedOrder.price,
-                cleanedOrder.totalPrice,
-                cleanedOrder.status,
-              ],
-            );
+            await prisma.order.create({
+              data: {
+                transactionNumber: transactionNum,
+                transactionDate: new Date(cleanedOrder.transactionDate),
+                itemName: cleanedOrder.itemName,
+                quantity: cleanedOrder.quantity,
+                price: cleanedOrder.price,
+                totalPrice: cleanedOrder.totalPrice,
+                status: cleanedOrder.status,
+              },
+            });
           }
         }
 
