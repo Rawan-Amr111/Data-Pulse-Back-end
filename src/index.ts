@@ -1,8 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
 import http, { IncomingMessage, ServerResponse } from "http";
 import { handleAuthRoutes } from "./routes/authRoutes";
 import { sendJSON } from "./utils/helpers";
-import dotenv from "dotenv";
 import { getOrdersController } from "./controllers/getOrdersController";
+import { getInventoryController } from "./controllers/getInventoryController";
 
 dotenv.config();
 
@@ -31,6 +33,8 @@ const server = http.createServer(
       await uploadController(req, res);
     } else if (req.url === "/api/orders" && req.method === "GET") {
       await getOrdersController(req, res);
+    } else if (req.url === "/api/inventory" && req.method === "GET") {
+      await getInventoryController(req, res);
     } else {
       sendJSON(res, 404, { message: "Global Route not found" });
     }

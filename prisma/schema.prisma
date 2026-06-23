@@ -1,5 +1,6 @@
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -17,15 +18,23 @@ model User {
 }
 
 model Order {
-  id                 Int      @id @default(autoincrement())
+  id                Int      @id @default(autoincrement())
   transactionNumber String?  @map("transaction_number") @db.VarChar(100)
   transactionDate   DateTime @map("transaction_date") @db.Date
   itemName          String   @map("item_name") @db.VarChar(255)
-  quantity           Int      @default(0)
-  price              Decimal  @default(0.00) @db.Decimal(10, 2)
+  quantity          Int      @default(0)
+  price             Decimal  @default(0.00) @db.Decimal(10, 2)
   totalPrice        Decimal  @default(0.00) @db.Decimal(12, 2)
-  status             String   @default("active") @db.VarChar(50)
-  createdAt          DateTime @default(now()) @map("created_at")
+  status            String   @default("active") @db.VarChar(50)
+  createdAt         DateTime @default(now()) @map("created_at")
 
   @@map("orders")
+}
+model Inventory {
+  id                Int      @id @default(autoincrement())
+  productName          String   @map("product_name") @db.VarChar(255)
+  stock         Int      @default(0)
+  demand          String   @map("demand") @db.VarChar(255)
+  trend          String   @map("trend") @db.VarChar(255)
+  @@map("inventory")
 }
