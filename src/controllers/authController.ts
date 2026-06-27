@@ -31,7 +31,7 @@ export const signupController = async (
       return sendJSON(res, 400, { message: "All fields are required" });
     }
 
-    // 🌟 1. التشيك على الإيميل باستخدام بريزما
+    
     const userExist = await prisma.user.findUnique({
       where: { email },
     });
@@ -43,7 +43,7 @@ export const signupController = async (
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 🌟 2. إنشاء مستخدم جديد واختيار العواميد الراجعـة فوراً (بديل RETURNING)
+    
     const newUser = await prisma.user.create({
       data: {
         name,
@@ -59,7 +59,7 @@ export const signupController = async (
 
     return sendJSON(res, 201, {
       message: "User created successfully",
-      user: newUser, // 🌟 راجع كـ Object نظيف من غير .rows[0]
+      user: newUser, 
     });
   } catch (error) {
     console.error("🚨 SIGNUP ERROR:", error);
@@ -78,7 +78,7 @@ export const loginController = async (
       return sendJSON(res, 400, { message: "Email and password are required" });
     }
 
-    // 🌟 3. جلب بيانات المستخدم للإكسس بالـ findUnique
+
     const user = await prisma.user.findUnique({
       where: { email },
     });
