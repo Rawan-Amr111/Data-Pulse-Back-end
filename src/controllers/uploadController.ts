@@ -34,6 +34,74 @@ const getValue = (row: AnyRow, keys: string[]) => {
   return undefined;
 };
 
+const excelSerialDateToDate = (serial: number) => {
+  const utcDays = Math.floor(serial - 25569);
+  const utcValue = utcDays * 86400;
+  return new Date(utcValue * 1000);
+};
+
+const parseTransactionDate = (value: unknown) => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const date = excelSerialDateToDate(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (slashMatch) {
+    const [, dayValue, monthValue, rawYear] = slashMatch;
+    const year =
+      rawYear.length === 2 ? Number(`20${rawYear}`) : Number(rawYear);
+    const month = Number(monthValue);
+    const day = Number(dayValue);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    if (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    ) {
+      return date;
+    }
+
+    return null;
+  }
+
+  const dashMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (dashMatch) {
+    const [, yearValue, monthValue, dayValue] = dashMatch;
+    const year = Number(yearValue);
+    const month = Number(monthValue);
+    const day = Number(dayValue);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    if (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    ) {
+      return date;
+    }
+
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 export const uploadController = async (
   req: IncomingMessage,
   res: ServerResponse,
@@ -78,7 +146,7 @@ export const uploadController = async (
           });
         }
 
-        const currentYear = 2026;
+        const currentYear = new Date().getFullYear();
 
         for (const row of rows) {
           if (fileType === "inventory") {
@@ -129,33 +197,29 @@ export const uploadController = async (
               getValue(row, ["transaction_number", "transactionNumber"]) ||
               "N/A";
 
-            const dateStr =
+            const dateValue =
               getValue(row, ["transaction_date", "transactionDate"]) || "";
 
             const quantity = quantityValue ? Number(quantityValue) : 0;
             const price = priceValue ? Number(priceValue) : 0;
 
-            let itemYear = currentYear;
-            let formattedDate = "2026-01-01";
-
-            if (dateStr && typeof dateStr === "string") {
-              const dateParts = dateStr.split("/");
-              if (dateParts.length === 3) {
-                const day = dateParts[0].padStart(2, "0");
-                const month = dateParts[1].padStart(2, "0");
-                const year = dateParts[2];
-                itemYear = parseInt(year, 10);
-                formattedDate = `${year}-${month}-${day}`;
-              }
+            const transactionDate = parseTransactionDate(dateValue);
+            if (!transactionDate) {
+              return sendJSON(res, 400, {
+                message:
+                  "Invalid transaction date. Use transaction_date or transactionDate with a valid date.",
+                value: dateValue,
+              });
             }
 
+            const itemYear = transactionDate.getFullYear();
             const status: "active" | "archive" =
               currentYear - itemYear >= 2 ? "archive" : "active";
 
             await prisma.order.create({
               data: {
                 transactionNumber: String(transactionNum),
-                transactionDate: new Date(formattedDate),
+                transactionDate,
                 itemName: String(itemName),
                 quantity: Number.isNaN(quantity) ? 0 : quantity,
                 price: Number.isNaN(price) ? 0 : price,
