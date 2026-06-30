@@ -167,12 +167,40 @@ export const uploadController = async (
             );
             const stock =
               cleanRow["stock"] !== undefined ? Number(cleanRow["stock"]) : 0;
+            const monthValue = getValue(row, ["month"]);
+            const minValue = getValue(row, ["min", "min_stock", "minStock"]);
+            const orderAtLeastValue = getValue(row, [
+              "orderAtLeast",
+              "order_at_least",
+              "order at least",
+            ]);
+            const avgDailyDemandValue = getValue(row, [
+              "avg_daily_demand",
+              "avgDailyDemand",
+              "avg daily demand",
+            ]);
             const demand = String(cleanRow["demand"] || "Stable");
             const trend = String(cleanRow["trend"] || "Flat");
             await prisma.inventory.create({
               data: {
                 productName: productName,
                 stock: stock,
+                month:
+                  monthValue !== undefined && monthValue !== ""
+                    ? String(monthValue)
+                    : null,
+                min:
+                  minValue !== undefined && minValue !== ""
+                    ? Number(minValue)
+                    : null,
+                orderAtLeast:
+                  orderAtLeastValue !== undefined && orderAtLeastValue !== ""
+                    ? Number(orderAtLeastValue)
+                    : null,
+                avgDailyDemand:
+                  avgDailyDemandValue !== undefined && avgDailyDemandValue !== ""
+                    ? Number(avgDailyDemandValue)
+                    : null,
                 demand: demand,
                 trend: trend,
                 userId,

@@ -82,6 +82,10 @@ type ModelPayload = {
   inventory: Array<{
     productName: string;
     stock: number;
+    month?: string | null;
+    min?: number | null;
+    orderAtLeast?: number | null;
+    avg_daily_demand?: number | null;
   }>;
   fallbackAnalytics: AnalyticsResponse;
   fallbackDashboard: DashboardResponse;
@@ -117,6 +121,10 @@ const buildLocalAnalytics = async (
       select: {
         productName: true,
         stock: true,
+        month: true,
+        min: true,
+        orderAtLeast: true,
+        avgDailyDemand: true,
       },
       orderBy: { stock: "asc" },
     }),
@@ -294,6 +302,11 @@ const buildLocalAnalytics = async (
       inventory: inventory.map((item) => ({
         productName: item.productName,
         stock: item.stock,
+        month: item.month,
+        min: item.min,
+        orderAtLeast: item.orderAtLeast,
+        avg_daily_demand:
+          item.avgDailyDemand === null ? null : Number(item.avgDailyDemand),
       })),
       fallbackAnalytics: analytics,
       fallbackDashboard: dashboard,
