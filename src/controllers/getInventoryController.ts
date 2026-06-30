@@ -21,6 +21,10 @@ export const getInventoryController = async (
         stock: true,
         demand: true,
         trend: true,
+        minStock: true,
+        orderAtLeast: true,
+        avgDailyDemand: true,
+        stockMonth: true,
       },
       orderBy: { id: "desc" },
     });

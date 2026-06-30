@@ -102,6 +102,32 @@ const parseTransactionDate = (value: unknown) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const parseMonthDate = (value: unknown) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Date(Date.UTC(value.getFullYear(), value.getMonth(), 1));
+  }
+
+  const parsed = parseTransactionDate(value);
+  if (!parsed) {
+    return null;
+  }
+
+  return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), 1));
+};
+
+const toNumberOrNull = (value: unknown) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+};
+
 export const uploadController = async (
   req: IncomingMessage,
   res: ServerResponse,
@@ -150,31 +176,33 @@ export const uploadController = async (
 
         for (const row of rows) {
           if (fileType === "inventory") {
-            const cleanRow: Record<string, string | number> = {};
-
-            Object.keys(row).forEach((key) => {
-              const cleanKey = key.trim().toLowerCase();
-              const rawValue = (row as Record<string, string | number>)[key];
-              if (rawValue !== undefined) {
-                cleanRow[cleanKey] = rawValue;
-              }
-            });
             const productName = String(
-              cleanRow["productname"] ||
-                cleanRow["product_name"] ||
-                cleanRow["product name"] ||
+              getValue(row, ["productName", "product_name", "name"]) ||
                 "Unknown Product",
             );
-            const stock =
-              cleanRow["stock"] !== undefined ? Number(cleanRow["stock"]) : 0;
-            const demand = String(cleanRow["demand"] || "Stable");
-            const trend = String(cleanRow["trend"] || "Flat");
+            const stock = toNumberOrNull(getValue(row, ["stock", "current"])) ?? 0;
+            const demand = String(getValue(row, ["demand"]) || "Stable");
+            const trend = String(getValue(row, ["trend"]) || "Flat");
+            const minStock = toNumberOrNull(getValue(row, ["min", "minStock"]));
+            const orderAtLeast = toNumberOrNull(
+              getValue(row, ["orderAtLeast", "order_at_least"]),
+            );
+            const avgDailyDemand = toNumberOrNull(
+              getValue(row, ["avg_daily_demand", "avgDailyDemand"]),
+            );
+            const stockMonth = parseMonthDate(getValue(row, ["month", "stockMonth"]));
+
             await prisma.inventory.create({
               data: {
                 productName: productName,
-                stock: stock,
+                stock: Math.round(stock),
                 demand: demand,
                 trend: trend,
+                minStock: minStock === null ? undefined : Math.round(minStock),
+                orderAtLeast:
+                  orderAtLeast === null ? undefined : Math.round(orderAtLeast),
+                avgDailyDemand: avgDailyDemand === null ? undefined : avgDailyDemand,
+                stockMonth: stockMonth ?? undefined,
                 userId,
               },
             });
@@ -191,7 +219,14 @@ export const uploadController = async (
               "quantity",
             ]);
 
-            const priceValue = getValue(row, ["price"]);
+            const priceValue = getValue(row, ["avg_unit_price_egp", "unitPrice"]);
+            const totalPriceValue = getValue(row, [
+              "totalPrice",
+              "total_price",
+              "total_revenue_egp",
+              "estimated_total_price_egp",
+              "price",
+            ]);
 
             const transactionNum =
               getValue(row, ["transaction_number", "transactionNumber"]) ||
@@ -201,7 +236,20 @@ export const uploadController = async (
               getValue(row, ["transaction_date", "transactionDate"]) || "";
 
             const quantity = quantityValue ? Number(quantityValue) : 0;
-            const price = priceValue ? Number(priceValue) : 0;
+            const explicitTotalPrice =
+              totalPriceValue === undefined ? null : Number(totalPriceValue);
+            const price =
+              priceValue !== undefined
+                ? Number(priceValue)
+                : explicitTotalPrice !== null && quantity > 0
+                  ? explicitTotalPrice / quantity
+                  : 0;
+            const totalPrice =
+              explicitTotalPrice !== null && !Number.isNaN(explicitTotalPrice)
+                ? explicitTotalPrice
+                : Number.isNaN(quantity) || Number.isNaN(price)
+                  ? 0
+                  : quantity * price;
 
             const transactionDate = parseTransactionDate(dateValue);
             if (!transactionDate) {
@@ -223,10 +271,7 @@ export const uploadController = async (
                 itemName: String(itemName),
                 quantity: Number.isNaN(quantity) ? 0 : quantity,
                 price: Number.isNaN(price) ? 0 : price,
-                totalPrice:
-                  Number.isNaN(quantity) || Number.isNaN(price)
-                    ? 0
-                    : quantity * price,
+                totalPrice,
                 status,
                 userId,
               },

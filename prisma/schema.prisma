@@ -40,6 +40,10 @@ model Inventory {
   stock         Int      @default(0)
   demand          String   @map("demand") @db.VarChar(255)
   trend          String   @map("trend") @db.VarChar(255)
+  minStock       Int?     @map("min")
+  orderAtLeast   Int?     @map("order_at_least")
+  avgDailyDemand Decimal? @map("avg_daily_demand") @db.Decimal(12, 2)
+  stockMonth     DateTime? @map("stock_month") @db.Date
   userId            Int      @map("user_id")
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@map("inventory")
