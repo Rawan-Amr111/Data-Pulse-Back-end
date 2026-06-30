@@ -82,10 +82,10 @@ type ModelPayload = {
   inventory: Array<{
     productName: string;
     stock: number;
-    month?: string | null;
-    min?: number | null;
-    orderAtLeast?: number | null;
-    avg_daily_demand?: number | null;
+    month?: string;
+    min?: number;
+    orderAtLeast?: number;
+    avg_daily_demand?: number;
   }>;
   fallbackAnalytics: AnalyticsResponse;
   fallbackDashboard: DashboardResponse;
@@ -97,6 +97,32 @@ const monthFormatter = new Intl.DateTimeFormat("en", {
 });
 
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
+
+const fetchJsonWithTimeout = async <T>(
+  url: string,
+  payload: ModelPayload,
+  timeoutMs = 15000,
+): Promise<T> => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Model API returned ${response.status}`);
+    }
+
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
 
 const buildLocalAnalytics = async (
   userId: number,
@@ -121,10 +147,10 @@ const buildLocalAnalytics = async (
       select: {
         productName: true,
         stock: true,
-        month: true,
-        min: true,
+        minStock: true,
         orderAtLeast: true,
         avgDailyDemand: true,
+        stockMonth: true,
       },
       orderBy: { stock: "asc" },
     }),
@@ -139,7 +165,10 @@ const buildLocalAnalytics = async (
     const orderTotal = Number(order.totalPrice);
 
     totalRevenue += orderTotal;
-    monthlySales.set(month, roundMoney((monthlySales.get(month) ?? 0) + orderTotal));
+    monthlySales.set(
+      month,
+      roundMoney((monthlySales.get(month) ?? 0) + orderTotal),
+    );
     productSales.set(
       order.itemName,
       (productSales.get(order.itemName) ?? 0) + order.quantity,
@@ -152,18 +181,21 @@ const buildLocalAnalytics = async (
   const latestMonthSales = sales.at(-1) ?? 0;
   const growthPercent =
     previousMonthSales > 0
-      ? roundMoney(((latestMonthSales - previousMonthSales) / previousMonthSales) * 100)
+      ? roundMoney(
+          ((latestMonthSales - previousMonthSales) / previousMonthSales) * 100,
+        )
       : 0;
 
   const bestMonth =
-    sales.length > 0
-      ? months[sales.indexOf(Math.max(...sales))]
-      : "N/A";
+    sales.length > 0 ? months[sales.indexOf(Math.max(...sales))] : "N/A";
 
   const recentSales = sales.slice(-3);
   const forecastNextMonth =
     recentSales.length > 0
-      ? roundMoney(recentSales.reduce((sum, value) => sum + value, 0) / recentSales.length)
+      ? roundMoney(
+          recentSales.reduce((sum, value) => sum + value, 0) /
+            recentSales.length,
+        )
       : 0;
 
   const nextMonthLabel =
@@ -224,9 +256,7 @@ const buildLocalAnalytics = async (
   const totalProducts = inventory.reduce((sum, item) => sum + item.stock, 0);
   const capacityUsed =
     inventory.length > 0
-      ? roundMoney(
-          (totalProducts / Math.max(inventory.length * 30, 1)) * 100,
-        )
+      ? roundMoney((totalProducts / Math.max(inventory.length * 30, 1)) * 100)
       : 0;
 
   const dashboard: DashboardResponse = {
@@ -302,11 +332,16 @@ const buildLocalAnalytics = async (
       inventory: inventory.map((item) => ({
         productName: item.productName,
         stock: item.stock,
-        month: item.month,
-        min: item.min,
-        orderAtLeast: item.orderAtLeast,
-        avg_daily_demand:
-          item.avgDailyDemand === null ? null : Number(item.avgDailyDemand),
+        ...(item.stockMonth
+          ? { month: item.stockMonth.toISOString().slice(0, 7) }
+          : {}),
+        ...(item.minStock !== null ? { min: item.minStock } : {}),
+        ...(item.orderAtLeast !== null
+          ? { orderAtLeast: item.orderAtLeast }
+          : {}),
+        ...(item.avgDailyDemand !== null
+          ? { avg_daily_demand: Number(item.avgDailyDemand) }
+          : {}),
       })),
       fallbackAnalytics: analytics,
       fallbackDashboard: dashboard,
@@ -328,17 +363,7 @@ const getModelAnalytics = async (
   const modelApiUrl = process.env.MODEL_API_URL;
   if (!modelApiUrl) return null;
 
-  const response = await fetch(modelApiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(modelPayload),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Model API returned ${response.status}`);
-  }
-
-  return (await response.json()) as AnalyticsResponse;
+  return fetchJsonWithTimeout<AnalyticsResponse>(modelApiUrl, modelPayload);
 };
 
 const getModelDashboard = async (
@@ -347,21 +372,19 @@ const getModelDashboard = async (
   const modelDashboardApiUrl = getDashboardModelUrl();
   if (!modelDashboardApiUrl) return null;
 
-  const response = await fetch(modelDashboardApiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(modelPayload),
-  });
+  const body = await fetchJsonWithTimeout<
+    DashboardResponse & {
+      dashboard?: DashboardResponse;
+    }
+  >(modelDashboardApiUrl, modelPayload);
 
-  if (!response.ok) {
-    throw new Error(`Model Dashboard API returned ${response.status}`);
-  }
-
-  const body = (await response.json()) as DashboardResponse & {
+  const normalizedBody = body as DashboardResponse & {
     dashboard?: DashboardResponse;
   };
 
-  return "dashboard" in body && body.dashboard ? body.dashboard : body;
+  return "dashboard" in normalizedBody && normalizedBody.dashboard
+    ? normalizedBody.dashboard
+    : normalizedBody;
 };
 
 export const analyticsController = async (
@@ -407,7 +430,10 @@ export const dashboardController = async (
       const modelDashboard = await getModelDashboard(modelPayload);
       return sendJSON(res, 200, modelDashboard ?? dashboard);
     } catch (modelError) {
-      console.error("Model Dashboard API Error, using local dashboard:", modelError);
+      console.error(
+        "Model Dashboard API Error, using local dashboard:",
+        modelError,
+      );
       return sendJSON(res, 200, dashboard);
     }
   } catch (error) {
