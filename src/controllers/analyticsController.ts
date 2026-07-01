@@ -216,7 +216,6 @@ const buildLocalAnalytics = async (
 
   const lowStockItems = inventory
     .filter((item) => item.stock <= 10)
-    .slice(0, 6)
     .map((item) => ({
       name: item.productName,
       current: item.stock,
@@ -333,7 +332,7 @@ const buildLocalAnalytics = async (
         productName: item.productName,
         stock: item.stock,
         ...(item.stockMonth
-          ? { month: item.stockMonth.toISOString().slice(0, 7) }
+          ? { month: new Date(item.stockMonth).toISOString().slice(0, 7) }
           : {}),
         ...(item.minStock !== null ? { min: item.minStock } : {}),
         ...(item.orderAtLeast !== null

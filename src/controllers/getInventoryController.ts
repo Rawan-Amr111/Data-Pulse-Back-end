@@ -20,18 +20,16 @@ export const getInventoryController = async (
         productName: true,
         stock: true,
         month: true,
-        min: true,
         orderAtLeast: true,
         avgDailyDemand: true,
         demand: true,
         trend: true,
-        minStock: true,
-        orderAtLeast: true,
-        avgDailyDemand: true,
+        minStock: true,   
         stockMonth: true,
       },
       orderBy: { id: "desc" },
     });
+    
     sendJSON(res, 200, {
       success: true,
       length: inventoryData.length,

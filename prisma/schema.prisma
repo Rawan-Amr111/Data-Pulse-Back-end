@@ -35,20 +35,18 @@ model Order {
   @@map("orders")
 }
 model Inventory {
-  id                Int      @id @default(autoincrement())
-  productName          String   @map("product_name") @db.VarChar(255)
-  stock         Int      @default(0)
-  month         String?  @db.VarChar(20)
-  min           Int?     @map("min_stock")
-  orderAtLeast  Int?     @map("order_at_least")
-  avgDailyDemand Decimal? @map("avg_daily_demand") @db.Decimal(10, 2)
-  demand          String   @map("demand") @db.VarChar(255)
-  trend          String   @map("trend") @db.VarChar(255)
-  minStock       Int?     @map("min")
-  orderAtLeast   Int?     @map("order_at_least")
-  avgDailyDemand Decimal? @map("avg_daily_demand") @db.Decimal(12, 2)
+  id             Int       @id @default(autoincrement())
+  productName    String    @map("product_name") @db.VarChar(255)
+  stock          Int       @default(0)
+  month          String?   @db.VarChar(20)
+  demand         String    @map("demand") @db.VarChar(255)
+  trend          String    @map("trend") @db.VarChar(255)
+  minStock       Int?      @map("min")
+  orderAtLeast   Int?      @map("order_at_least")
+  avgDailyDemand Decimal?  @map("avg_daily_demand") @db.Decimal(12, 2)
   stockMonth     DateTime? @map("stock_month") @db.Date
-  userId            Int      @map("user_id")
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         Int       @map("user_id")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("inventory")
 }
