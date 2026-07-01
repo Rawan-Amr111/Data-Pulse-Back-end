@@ -9,6 +9,7 @@ import {
   analyticsController,
   dashboardController,
 } from "./controllers/analyticsController";
+import { bundlesController } from "./controllers/bundlesController";
 
 dotenv.config();
 
@@ -43,6 +44,8 @@ const server = http.createServer(
       await analyticsController(req, res);
     } else if (req.url === "/api/dashboard" && req.method === "GET") {
       await dashboardController(req, res);
+    } else if (req.url === "/api/bundles" && req.method === "GET") {
+      await bundlesController(req, res);
     } else {
       sendJSON(res, 404, { message: "Global Route not found" });
     }

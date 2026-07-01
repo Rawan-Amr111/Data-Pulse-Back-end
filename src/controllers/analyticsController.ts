@@ -261,7 +261,7 @@ const buildLocalAnalytics = async (
   const dashboard: DashboardResponse = {
     stockAlert: {
       criticalItemsCount,
-      message: `Critical Stock Alert: ${criticalItemsCount} items are below safety stock levels.`,
+      message: `Critical Stock Alert: ${criticalItemsCount} items have fallen below their safety stock levels and require immediate attention.`,
     },
     statBoxes: [
       {
