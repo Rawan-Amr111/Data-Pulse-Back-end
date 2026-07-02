@@ -10,6 +10,7 @@ import {
   dashboardController,
 } from "./controllers/analyticsController";
 import { bundlesController } from "./controllers/bundlesController";
+import { reorderPlanController } from "./controllers/reorderPlanController";
 
 dotenv.config();
 
@@ -46,6 +47,8 @@ const server = http.createServer(
       await dashboardController(req, res);
     } else if (req.url === "/api/bundles" && req.method === "GET") {
       await bundlesController(req, res);
+    } else if (req.url === "/api/reorder-plan" && req.method === "GET") {
+      await reorderPlanController(req, res);
     } else {
       sendJSON(res, 404, { message: "Global Route not found" });
     }
